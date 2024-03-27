@@ -1,90 +1,217 @@
-import React, { useState, useEffect }from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
-import { SignInWithApple, SignInWithAppleResponse, SignInWithAppleOptions } from '@capacitor-community/apple-sign-in';
+
+import { jsPDF } from "jspdf";
+
+import { Directory, Filesystem } from "@capacitor/filesystem";
+
+
+import { order } from './order';
 
 function App() {
+/////////////////////////////////////////
+  //@pdfme/generator
+////////////////////////////////////////
 
-  const handleSignInWithApple = async () => {
-    const options: SignInWithAppleOptions = {
-      clientId: 'com.tu.servicio', //APP ID, no Service ID
-      redirectURI: 'https://www.tufrontend.com/login', //URL
-      scopes: 'email name',
-      state: '12345',
-      nonce: 'nonce',
-    };
+/*
 
-    try {
-      const result: SignInWithAppleResponse = await SignInWithApple.authorize(options);
-      // Manejar la información del usuario
-      // Validar el token con el servidor y crear una nueva sesión
-      console.log(result);
-    } catch (error) {
-      // Manejar errores
-      console.error('Error al iniciar sesión con Apple:', error);
-    }
+function generateTemplate(order: any): Template {
+  
+  
+
+
+  const template: Template = {
+    basePdf: BLANK_PDF,
+    schemas: [],
   };
 
+
+  const titleSchema = {
+    type: 'text',
+    position: { x: 0, y: 0 },
+    width: 10,
+    height: 10,
+    content: '{{eventName}}',
+    style: { fontSize: 24, align: 'center', bold: true },
+  };
+  template.schemas.push({ title: titleSchema });
+
+
+  const dateSchema = {
+    type: 'text',
+    position: { x: 0, y: 20 },
+    width: 10,
+    height: 10,
+    content: '{{formattedDate}}',
+    style: { fontSize: 12, align: 'center' },
+  };
+  template.schemas.push({ date: dateSchema });
+
+
+  order.tickets.forEach((ticket: any) => {
+    const ticketSchema = {
+      type: 'text',
+      position: { x: 0, y: 40 },
+      width: 10,
+      height: 10,
+      content: '{{ticketName}}',
+      style: { fontSize: 24, align: 'center', bold: true },
+    };
+    template.schemas.push({ ticketName: ticketSchema });
+
+    const ticketDescriptionSchema = {
+      type: 'text',
+      position: { x: 0, y: 40 },
+      width: 10,
+      height: 10,
+      content: '{{ticketDescription}}',
+      style: { fontSize: 12, align: 'center' },
+    };
+    template.schemas.push({ ticketDescription: ticketDescriptionSchema });
+
+
+    if (ticket.extras) {
+      ticket.extras.forEach((extra: any) => {
+        const extraNameSchema = {
+          type: 'text',
+          position: { x: 0, y: 40 },
+          width: 10,
+          height: 10,
+          content: '{{extraName}}',
+          style: { fontSize: 12, align: 'center' },
+        };
+        template.schemas.push({ extraName: extraNameSchema });
+
+        const extraDescriptionSchema = {
+          type: 'text',
+          position: { x: 0, y: 40 },
+          width: 10,
+          height: 10,
+          content: '{{extraDescription}}',
+          style: { fontSize: 12, align: 'center' },
+        };
+        template.schemas.push({ extraDescription: extraDescriptionSchema });
+      });
+    }
+  });
+
+  return template;
+}
+
+const template = generateTemplate(order);
+
+
+
+
+const inputs = order.tickets.flatMap(ticket => {
+  const ticketInputs = {
+    eventName: order.event_name.toString(),
+    formattedDate: formatDate(order.start_date),
+    ticketName: ticket.ticket_name.toString(),
+    ticketDescription: ticket.ticket_description.toString(),
+  };
+
+  const extrasInputs = ticket.extras ? ticket.extras.map(extra => ({
+    extraName: extra.extra_name.toString(),
+    extraDescription: extra.extra_description.toString(),
+  })) : [];
+
+  return [ticketInputs, ...extrasInputs];
+});
+
+
+
+function generateAndOpenPDF(template: any, inputs: any) {
+  generate({ template, inputs }).then((pdf: any) => {
+    console.log(pdf);
+
+    // Para abrir el PDF en una nueva ventana del navegador
+    const blob = new Blob([pdf.buffer], { type: 'application/pdf' });
+    window.open(URL.createObjectURL(blob));
+  }).catch((error: any) => {
+    console.error('Error al generar el PDF:', error);
+  });
+}
+  */
+/////////////////////////////////////
+// jsPDF
+/////////////////////////////////////
+
+function formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  const day = date.toLocaleString('es-ES', { weekday: 'short' });
+  const month = date.toLocaleString('es-ES', { month: 'short' });
+  const dayOfMonth = date.getDate();
+  return `${day}, ${month} ${dayOfMonth}`;
+}
+
+
+const downloadPDF = async () => {
+  const doc = new jsPDF();
+
+  doc.setFontSize(20);
+  doc.text(order.event_name, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+
+  doc.setFontSize(12);
+  doc.text(formatDate(order.start_date), doc.internal.pageSize.getWidth() / 2, 30, { align: 'center' });
+
+  doc.text('', 10, 40);
+
+  order.tickets.forEach((ticket, index) => {
+    doc.setFontSize(16);
+    doc.text(ticket.ticket_name, 10, 50 + 2 * index * 60);
+
+    doc.setFontSize(12);
+    doc.text(ticket.ticket_name, doc.internal.pageSize.getWidth() / 2, 50 + 2 * index * 60 + 10, { align: 'center' });
+    doc.text(ticket.ticket_description, 10, 50 + 2 * index * 60 + 20);
+
+    if (ticket.extras && ticket.extras.length > 0) {
+      doc.setFontSize(16);
+      doc.text('Extras', doc.internal.pageSize.getWidth() / 2, 50 + 2 * index * 60 + 40, { align: 'center' });
+
+      ticket.extras.forEach((extra, idex2) => {
+        doc.setFontSize(12);
+        doc.text(extra.extra_name, 10, 50 + 2 * index * 60 + 50 + 2 * idex2 * 20);
+        doc.text(extra.extra_description, 10, 50 + 2 * index * 60 + 60 + idex2 * 20);
+      });
+    }
+
+    doc.line(10, 50 + 2 * index * 60 + 50 + 2 * ticket.extras.length * 20 , doc.internal.pageSize.getWidth() - 10,  50 + 2 * index * 60 + 50 + 2 * ticket.extras.length * 20 )
+  });
+
+  doc.setLineWidth(0.5);
+  doc.save(`order_${order.event_name}_${order.start_date}.pdf`);
+
+  //doc.save ya descarga el archivo, pero no se si en otras plataformas funcionas. En el sctipt de ejemplo que me pasó Juan lo descargaba con este código de abajo.
+  /*
+  const pdfBase64 = doc.output("datauristring");
+  const fileName = `order_${order.event_name}_${order.start_date}.pdf`;
+
+  try {
+    await Filesystem.writeFile({
+      path: fileName,
+      data: pdfBase64,
+      directory: Directory.Documents,
+    });
+  } catch (error) {
+    console.error("Unable to write file", error);
+  }*/
+};
+
   return (
-    <button onClick={handleSignInWithApple}>Iniciar sesión con Apple</button>
+    /*
+    <div className="App">
+      <h1>Generador de PDF</h1>
+      <button onClick={() => generateAndOpenPDF(template, inputs)}>Generar y abrir PDF</button>
+    </div>
+    */
+
+    <div className='App'>
+      <h1>Generador de PDF</h1>
+      <button onClick={downloadPDF}>Generar y abrir PDF</button>
+    </div>
+
   );
 };
 
 export default App;
-
-/* Pasos a seguir con la cuenta Apple:
-  1.
-    Voy a usar FireBase para la gestión de cuentas (similar a OAuth), ya que además de ser compatible con Apple, nos da acceso a ciertas funciones útiles.
-    Parece que puede usarse también Apple js sdk en lugar de firebase, pero desconozco el como.
-    Creamos un nuevo proyecto en FireBase (similar a lo que hacíamos con OAuth).
-    Creamos nueva aplicación web.
-    Activar database en testmode, para que los usuarios estén siempre autentificados (seleccioanr test y next a todo).
-    Ir a authentication y seleccionar apple, activarla y dejar la ventana abierta para más tarde.
-    Ahora hay que configurar la cuenta de apple.
-  2.
-    Necesitamos una cuenta de desarrollador de apple.
-    Una vez obtenida, debemos ir a developer.apple.com/account/resorces/identifiers/list y crear una nueva apple id (en caso de que no tengamos una ya creada).
-    Para hacer esto, una vez estemos en la pestaña de indentifiers, pulsamos en el + de color azul.
-    Seleccionamos la opción de App IDs y pulsamos en continuar.
-    En seleccionar un tipo, seleccionamos App (creo que viene seleccionada por defecto) y pulsamos continuar.
-    Escribimos una descripción y el bundle ID (explicit), y seleccionamos las capabilities que queramos (importante seleccionar Sign In with Apple).
-    En Sign In with Apple, darle a editar y se nos abrirá su configuración del App ID.
-    Asegurarse de que está seleccionado Enable as a primary App ID.
-    Guardar y pulsar en continuar.
-    Pulsar en Register y ya estará la ID de la App registrada.
-  3.
-    Ahora veremos todas nuestras App IDs.
-    Arriba a la derecha, en el icono de la lupa + App ID, seleccionar Services IDs y clicamos en el + de color azul de nuevo.
-    Seleccionamos Service IDs y pulsamos continuar.
-    Le damos una descripción y un identificador (teóricamente distinto a bundle ID, por si acaso).
-    Pulsamos continuar y Register. Ahora veremos la lista de Service IDs.
-    Pulsar en Identificador que hemos creado, lo que nos llevará a la página de editar la configuración de nuestro Service ID.
-    Seleccionar Enable Sign Up with Apple y darle a configurar.
-  4.
-    Se nos abrirá la ventana de configuración de la autentificación web. Seleccionamos la Primary App ID que hemos creado anteriormente.
-    Ahora tenemos que registrar nuestros dominios, subdominions y URLs de web. Una vez hecho dalre a next y done.
-    Los Dominios Y Subdominios están en firebase, en la pestaña de authentication de nuestro proyecto. Debajo de donde se pone la Private Key.
-    Pegar el identificador en firebase, athentication, Services ID. Se encuentra en la Apple, en certificates, Identifiers & Profiles, con el nombre de Identifier.
-    Pone que no es necesario, pero por si acaso. Hay gente que dice lo contrario y que no va sin ella.
-  5.
-    Ir a la pestaña de keys de apple en Certificados, identificadore sy perfiles. Le damos al + azul pera crear uan nueva key.
-    Le damos un nombre y seleccionamos Sign In with Apple.
-    Pulsamos en configurar y seleccionamos la Primary App ID. Pulsamos next y continuar. Sign In with Apple debería aparecer marcada.
-    Pulsamos en register y copiamos la Key ID y la Team ID (Arriba a la derecha, justo debajo de nuestro nombre de cuenta. Aparecerá nuestro nombre - Team ID).
-    No cerrar la pestaña / ventana.
-  6.
-    Pegar Key ID y Team ID en la ventana de firebase que hemos dejado abeirta antes con lo de auth.
-    En apple de nuevo, pulsar download para descarcar nuestra clave en formato json.
-    Desde una terminal, ejecutamos el comando cat + dirección del archivo descargado, así podemos ver el mensaje y copiarlo.
-    Pegar el mensaje entero, y pegarlo en la ventana de firebase donde dice Private Key.
-    Guardar cambios en firebase.
-  7.
-    Las opciones ( const options ), se encuentran en firebase, en la aplicación web.
-    Hay que asegurarse de que los usuarios que logean no solo aparezcan en el apartado de usuarios, sino en la base de datos también.
-    Para ello, revisar que en el apartado de rules de la base de datos, pone: "allow read, write: if true;" en vez de false.
-    Asegurarse de configurar bien capacitor (la webDir más que nada).
-    Al testear en IOS, seleccionar la APP, e ir a Signing & Capabilities y seleccionar el Team correcto.
-    Darle al + y seleccionar Sign In with Apple, en la misma pestaña de Signing & Capabilities.
-    También necesitamos la Aplicación IOS en capacitor
-
-
-*/
